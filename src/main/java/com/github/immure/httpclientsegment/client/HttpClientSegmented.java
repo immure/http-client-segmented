@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Queue;
 
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -50,7 +51,14 @@ public class HttpClientSegmented {
 		}
 
 		long contentLength = getContentSize(url);
+		
+		if (log.isDebugEnabled())
+			log.debug("Content Size: " + contentLength + " (" + util.readableFileSize(contentLength) + ")");
+		
 		long segmentSize = contentLength / segments;
+		
+		if (log.isDebugEnabled())
+			log.debug("Using segment size of " + segments + " (" + util.readableFileSize(segmentSize) + ")");
 		
 		
 		SegmentDownloadThreadPool threadPool = new SegmentDownloadThreadPool(segments);
@@ -60,14 +68,19 @@ public class HttpClientSegmented {
 		long currentSize = 0;
 		
 		List<File> temporaryFiles = new ArrayList<File>(segments); 
+		List<FileOutputStream> fileOutputStreams = new ArrayList<FileOutputStream>(segments);
 
 		for (int i = 1; i <= segments; i++) {
 			try {
-				File f = File.createTempFile(url.getHost(), "segment");
+				File f = File.createTempFile(url.getHost(), "-segment-" + i);
+				log.debug("Creating: " + f.getName());
 				f.createNewFile();
+				temporaryFiles.add(f);
 				FileOutputStream fos = new FileOutputStream(f);
+				fileOutputStreams.add(fos);
 				long firstByte = currentSize;
 				long lastByte = firstByte + segmentSize;
+				currentSize = lastByte + 1;
 				if (i == segments) {
 					// Last segment, round lastByte up to content size (prevent
 					// rounding errors)
@@ -80,8 +93,18 @@ public class HttpClientSegmented {
 				throw new SegmentedDownloadException(e);
 			}
 		}
+
+		
 		threadPool.startDownload();
 		while (!threadPool.isComplete()) {
+		}
+		
+		for (FileOutputStream fos : fileOutputStreams) {
+			try {
+				fos.close();
+			} catch (IOException e) {
+				log.warn("Was unable to close output stream for file! Probably won't delete.");
+			}
 		}
 		log.debug("Download complete, merging temporary files");
 		
@@ -97,7 +120,15 @@ public class HttpClientSegmented {
 		} finally {
 			for (File temporaryFile : temporaryFiles) {
 				if (temporaryFile.exists()) {
-					temporaryFile.delete();
+					log.debug("Deleting: " + temporaryFile.getName());
+					try {
+						FileUtils.forceDelete(temporaryFile);
+					} catch (IOException e) {
+						log.warn("Failed to delete (" + e.getMessage() + "): " + temporaryFile.getPath());
+					}
+					boolean success =temporaryFile.delete();
+					if (!success) {
+					}
 				}
 			}
 		}

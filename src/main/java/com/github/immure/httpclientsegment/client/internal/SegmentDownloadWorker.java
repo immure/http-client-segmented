@@ -65,7 +65,6 @@ public class SegmentDownloadWorker implements Runnable {
 		HttpEntity httpEntity = httpResponse.getEntity();
 		try {
 			InputStream httpInputStream = httpEntity.getContent();
-			log.debug("--> StatusLine: " + httpResponse.getStatusLine());
 			IOUtils.copy(httpInputStream, outputStream);
 			httpInputStream.close();
 		} catch (IllegalStateException e) {
@@ -79,7 +78,7 @@ public class SegmentDownloadWorker implements Runnable {
 	@Override
 	public void run() {
 		try {
-		stream();
+			stream();
 		} catch (SegmentedDownloadException e) {
 			throw new RuntimeException(e);
 		}

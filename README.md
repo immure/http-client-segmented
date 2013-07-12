@@ -1,4 +1,4 @@
-http-client-chunks
+http-client-segmented
 ==================
 
-Java HTTP Client (with chunk support)
+Java HTTP Client (with segmented download support)

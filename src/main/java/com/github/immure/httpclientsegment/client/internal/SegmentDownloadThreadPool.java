@@ -1,6 +1,7 @@
 package com.github.immure.httpclientsegment.client.internal;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -46,6 +47,10 @@ public class SegmentDownloadThreadPool {
 	
 	public boolean isComplete() {
 		return executorService.isTerminated();
+	}
+	
+	public List<SegmentDownloadWorker> getWorkers() {
+		return Collections.unmodifiableList(workers);
 	}
 	
 	

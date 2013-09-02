@@ -1,8 +1,12 @@
-package com.github.immure.httpclientsegment.client.internal;
+package com.github.immure.httpclientsegment.client;
 
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
+import com.github.immure.httpclientsegment.client.progress.ProgressListener;
 import com.github.immure.httpclientsegment.util.HttpClientChunkUtil;
 
 public class Segment {
@@ -11,6 +15,7 @@ public class Segment {
 	private long lastByte;
 	private URI url;
 	private int segmentNumber;
+	private List<ProgressListener> progressListeners = new ArrayList<ProgressListener>();
 	
 	private HttpClientChunkUtil util = HttpClientChunkUtil.getInstance();
 
@@ -65,6 +70,14 @@ public class Segment {
 		return "Segment [totalSize=" + getTotalSize() + ", firstByte=" + firstByte + ", lastByte=" + lastByte
 				+ ", url=" + url + ", segmentNumber=" + segmentNumber
 				+ "]";
+	}
+	
+	public void addListener(ProgressListener progressListener) {
+		progressListeners.add(progressListener);
+	}
+	
+	public List<ProgressListener> getListeners() {
+		return Collections.unmodifiableList(progressListeners);
 	}
 
 	

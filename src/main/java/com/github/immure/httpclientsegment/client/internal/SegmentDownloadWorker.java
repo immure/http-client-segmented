@@ -12,18 +12,22 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.DefaultHttpClient;
 
+import com.github.immure.httpclientsegment.client.Segment;
 import com.github.immure.httpclientsegment.client.SegmentedDownloadException;
+import com.github.immure.httpclientsegment.client.progress.ProgressListener;
 
 public class SegmentDownloadWorker implements Runnable {
 
 	private final Log log;
 	private final Segment segment;
-	private OutputStream outputStream;
+	private OutputStreamProgress outputStreamProgress;
+	private int httpCode = -1;
 
 	public SegmentDownloadWorker(Segment segment, OutputStream outputStream) {
 		if (segment == null) {
@@ -33,7 +37,7 @@ public class SegmentDownloadWorker implements Runnable {
 			throw new IllegalArgumentException("outputstream cannot be null");
 		}
 		this.segment = segment;
-		this.outputStream = outputStream;
+		this.outputStreamProgress = new OutputStreamProgress(outputStream, segment.getListeners());
 		log = LogFactory.getLog(SegmentDownloadWorker.class + "-"
 				+ segment.getSegmentNumber());
 	}
@@ -56,21 +60,28 @@ public class SegmentDownloadWorker implements Runnable {
 		HttpResponse httpResponse = null;
 		try {
 			httpResponse = httpClient.execute(httpGet);
+			httpCode = httpResponse.getStatusLine().getStatusCode();
+			log.debug("HTTP Response Code: " + httpCode);
+			for (Header header : httpResponse.getAllHeaders()) {
+				log.debug("<-- Header: " + header.getName() + ": " + header.getValue());
+			}
 		} catch (ClientProtocolException e) {
 			throw new SegmentedDownloadException(e);
 		} catch (IOException e) {
 			throw new SegmentedDownloadException(e);
 		}
-
-		HttpEntity httpEntity = httpResponse.getEntity();
-		try {
-			InputStream httpInputStream = httpEntity.getContent();
-			IOUtils.copy(httpInputStream, outputStream);
-			httpInputStream.close();
-		} catch (IllegalStateException e) {
-			throw new SegmentedDownloadException(e);
-		} catch (IOException e) {
-			throw new SegmentedDownloadException(e);
+		
+		if (httpCode == HttpStatus.SC_OK || httpCode == HttpStatus.SC_PARTIAL_CONTENT) {
+			HttpEntity httpEntity = httpResponse.getEntity();
+			try {
+				InputStream httpInputStream = httpEntity.getContent();
+				IOUtils.copy(httpInputStream, outputStreamProgress);
+				httpInputStream.close();
+			} catch (IllegalStateException e) {
+				throw new SegmentedDownloadException(e);
+			} catch (IOException e) {
+				throw new SegmentedDownloadException(e);
+			}
 		}
 
 	}
@@ -80,9 +91,26 @@ public class SegmentDownloadWorker implements Runnable {
 		try {
 			stream();
 		} catch (SegmentedDownloadException e) {
+			log.error(e);
 			throw new RuntimeException(e);
 		}
 		
+	}
+	
+	public int getHttpCode() {
+		return httpCode;
+	}
+	
+	public long getBytesWritten() {
+		return outputStreamProgress.getWrittenLength();
+	}
+	
+	public long getTotalBytes() {
+		return segment.getTotalSize();
+	}
+	
+	public int getSegmentNumber() {
+		return segment.getSegmentNumber();
 	}
 
 }

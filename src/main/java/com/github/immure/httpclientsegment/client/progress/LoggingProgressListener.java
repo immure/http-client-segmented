@@ -28,7 +28,11 @@ public class LoggingProgressListener implements ProgressListener {
 		int newProgress = Math.round(percentComplete);
 		if (newProgress > progress) {
 			progress = newProgress;
-			log.debug(progress + "% complete");
+			if ((progress % 10) == 0) {
+				log.debug("Segment " + s.getSegmentNumber() + " " + progress  + "% complete");
+			} else if (log.isTraceEnabled()) {
+				log.trace("Segment " + s.getSegmentNumber() + " " + progress  + "% complete");
+			}
 		}
 	}
 

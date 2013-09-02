@@ -57,12 +57,12 @@ public class HttpClientSegmented {
 		long contentLength = getContentSize(url);
 		
 		if (log.isDebugEnabled())
-			log.debug("Content Size: " + contentLength + " (" + util.readableFileSize(contentLength) + ")");
+			log.trace("Content Size: " + contentLength + " (" + util.readableFileSize(contentLength) + ")");
 		
 		long segmentSize = contentLength / numSegments;
 		
 		if (log.isDebugEnabled())
-			log.debug("Using " + segments + " segments of size " + segmentSize + " (" + util.readableFileSize(segmentSize) + ")");
+			log.debug("Using " + segmentSize + " segments of size " + segmentSize + " (" + util.readableFileSize(segmentSize) + ")");
 		
 		long currentSize = 0;
 		for (int i = 1; i <= numSegments; i++) {
@@ -99,7 +99,7 @@ public class HttpClientSegmented {
 		for (Segment s : segments) {
 			try {
 				File f = File.createTempFile(s.getUrl().getHost(), "-segment-" + i++);
-				log.debug("Creating: " + f.getName());
+				log.trace("Creating: " + f.getName());
 				f.createNewFile();
 				temporaryFiles.add(f);
 				FileOutputStream fos = new FileOutputStream(f);
@@ -153,7 +153,7 @@ public class HttpClientSegmented {
 		} finally {
 			for (File temporaryFile : temporaryFiles) {
 				if (temporaryFile.exists()) {
-					log.debug("Deleting: " + temporaryFile.getName());
+					log.trace("Deleting: " + temporaryFile.getName());
 					try {
 						FileUtils.forceDelete(temporaryFile);
 					} catch (IOException e) {
@@ -176,18 +176,19 @@ public class HttpClientSegmented {
 		HttpGet httpGet = new HttpGet(uri);
 		log.debug("Getting content size for: " + uri);
 		for (Header header : httpGet.getAllHeaders()) {
-			log.debug("--> Header: " + header);
+			log.trace("--> Header: " + header);
 		}
 
-		log.debug("--> Header size is: " + httpGet.getAllHeaders().length);
+		log.trace("--> Header size is: " + httpGet.getAllHeaders().length);
 		HttpResponse httpResponse = null;
 		try {
 			httpResponse = httpClient.execute(httpGet);
 			long contentLength = Long.parseLong(httpResponse.getFirstHeader(
 					"Content-Length").getValue());
 			for (Header header : httpResponse.getAllHeaders()) {
-				log.debug("<-- Header: " + header.getName() + ": " + header.getValue());
+				log.trace("<-- Header: " + header.getName() + ": " + header.getValue());
 			}
+			httpGet.abort();
 			httpGet.releaseConnection();
 			return contentLength;
 		} catch (ClientProtocolException e) {
